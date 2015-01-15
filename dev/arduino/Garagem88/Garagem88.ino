@@ -1,4 +1,4 @@
-/* Web_Buzzer.pde - example sketch for Webduino library */
+/* Based on Web_Buzzer.pde - example sketch for Webduino library */
 
 #include "SPI.h"
 #include "Ethernet.h"
