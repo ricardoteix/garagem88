@@ -4,6 +4,9 @@
 #include "Ethernet.h"
 #include "WebServer.h"
 
+#include <DS1307.h>
+#include <TimerOne.h>
+
 /* CHANGE THIS TO YOUR OWN UNIQUE VALUE.  The MAC number should be
  * different from any other devices on your network or you'll have
  * problems receiving packets. */
@@ -21,6 +24,7 @@ static uint8_t ip[] = { 192, 168, 0, 100 };
  * define the PREFIX value.  We also will listen on port 80, the
  * standard HTTP service port */
 #define PREFIX "/hcs"
+#define CINFIG_TIME_PREFIX "/configtime"
 WebServer webserver(PREFIX, 88);
 
 /* the piezo speaker on the Danger Shield is on PWM output pin #3 */
@@ -28,15 +32,17 @@ int GARAGEM_PIN = 5;
 int ALARME_ON_PIN = 6;
 int ALARME_OFF_PIN = 7;
 
+DS1307 rtc(A4, A5); // SDA, SCL
+
+boolean ligarAlarme = false;
+boolean desligarAlarme = false;
+
+char *newTime;
 
 /* this is the number of microseconds to wait after turning the
  * speaker on before turning it off. */
 int controlValue = 0;
 int control = 0;
-
-/* toggle is used to only turn on the speaker every other loop
-iteration. */
-char toggle = 0;
 
 /* This command is set as the default command for the server.  It
  * handles both GET and POST requests.  For a GET, it returns a simple
@@ -58,7 +64,7 @@ void buzzCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, 
 
       /* this is a standard string comparison function.  It returns 0
        * when there's an exact match.  We're looking for a parameter
-       * named "buzz" here. */
+       * named "hcs" here. */
       if (strcmp(name, "hcs") == 0)
       {
 	/* use the STRing TO Unsigned Long function to turn the string
@@ -106,6 +112,23 @@ void setup()
 {
   Serial.begin(9600);
   
+  Timer1.initialize(1000000); // set a timer of length 100000 microseconds (or 0.1 sec - or 10Hz => the led will blink 5 times, 5 cycles of on-and-off, per second)
+  Timer1.attachInterrupt( timerIsr );
+  
+  //Aciona o relogio
+  rtc.halt(false);
+   
+  //As linhas abaixo setam a data e hora do modulo
+  //e podem ser comentada apos a primeira utilizacao
+  //rtc.setDOW(FRIDAY);      //Define o dia da semana
+  //rtc.setTime(1,30, 0);     //Define o horario
+  //rtc.setDate(23, 1, 2015);   //Define o dia, mes e ano
+   
+  //Definicoes do pino SQW/Out
+  rtc.setSQWRate(SQW_RATE_1);
+  rtc.enableSQW(true);
+   
+  
   // set the PWM output for the buzzer to out
   pinMode(GARAGEM_PIN, OUTPUT);
   pinMode(ALARME_ON_PIN, OUTPUT);
@@ -120,12 +143,10 @@ void setup()
 
   /* register our default command (activated with the request of
    * http://x.x.x.x/hcs */
-  webserver.setDefaultCommand(&buzzCmd);
-
+  webserver.setDefaultCommand(&buzzCmd); 
   /* start the server to wait for connections */
   webserver.begin();
 }
-
 void loop()
 {
   // process incoming connections one at a time forever
@@ -133,6 +154,18 @@ void loop()
 
   /* every other time through the loop, turn on and off the speaker if
    * our delay isn't set to 0. */
+   
+  if (ligarAlarme) {
+    Serial.println("#### LIGA ALARME ###");
+    controleLigarAlarme();
+    ligarAlarme = false;
+  }
+   
+  if (desligarAlarme) {
+    Serial.println("#### DESLIGA ALARME ###");
+    controleDesligarAlarme();
+    desligarAlarme = false;
+  }
   
   if (control == 1) {
     Serial.print("control: ");
@@ -156,12 +189,6 @@ void loop()
     control = 0;
     controlValue = 0;
   }
-  /*if ((++toggle & 1) && (buzzDelay > 0))
-  {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delayMicroseconds(buzzDelay);
-    digitalWrite(BUZZER_PIN, LOW);
-  }*/
 }
 //350997527
 void controlePortao() {
@@ -201,4 +228,20 @@ void controleDesligarAlarme() {
   digitalWrite(ALARME_OFF_PIN, LOW);
   delay(3000);
   digitalWrite(ALARME_OFF_PIN, HIGH); 
+}
+
+void timerIsr() {
+  //Mostra as informações no Serial Monitor
+  char *timeNow = rtc.getTimeStr();
+  Serial.print("Hora : ");
+  Serial.println(timeNow);
+  
+  if (strcmp(timeNow, "22:00:00") == 0) {
+      ligarAlarme = true;
+  }
+  
+  if (strcmp(timeNow, "05:30:00") == 0) {
+      desligarAlarme = true;
+  }
+
 }
