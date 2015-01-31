@@ -24,12 +24,25 @@ static uint8_t ip[] = { 192, 168, 0, 100 };
  * define the PREFIX value.  We also will listen on port 80, the
  * standard HTTP service port */
 #define PREFIX "/hcs"
+
+#define ABERTO "ABERTO"
+#define FECHADO "FECHADO"
+
 WebServer webserver(PREFIX, 88);
 
 /* the piezo speaker on the Danger Shield is on PWM output pin #3 */
 int GARAGEM_PIN = 5;
 int ALARME_PIN = 6;
 //int ALARME_OFF_PIN = 7;
+
+int PORTAO_PIN = 2;
+long int contaStatusPortao = 0;
+long int tempoStatusPortao = 0;
+long int incPortao = 0;
+int portaoAberto = 0;
+int statusPortaoPin = 0;
+int statusPortao = 0;
+int contaSec = 0;
 
 DS1307 rtc(A4, A5); // SDA, SCL
 
@@ -88,7 +101,28 @@ void buzzCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, 
   if (type == WebServer::GET)
   {
     /* store the HTML in program memory using the P macro */
-    P(message) = 
+    char portao[8];
+    if (statusPortao == 0) {
+      portao[0] = 'F';
+      portao[1] = 'E';
+      portao[2] = 'C';
+      portao[3] = 'H';
+      portao[4] = 'A';
+      portao[5] = 'D';
+      portao[6] = 'O';
+      portao[7] = '\0';
+    } else {
+      portao[0] = 'A';
+      portao[1] = 'B';
+      portao[2] = 'E';
+      portao[3] = 'R';
+      portao[4] = 'T';
+      portao[5] = 'O';
+      portao[6] = '\0';
+      portao[7] = '\0';
+    }
+    
+    P(message1) = 
       "<html><head><title>Garagem 88</title>"
       "<link rel='stylesheet' href='http://www.ricardoteix.com/labs/garagem88/style.css'>"
       "<script src='http://www.ricardoteix.com/labs/garagem88/gps.js'></script>"
@@ -99,9 +133,18 @@ void buzzCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, 
       "<form action='hcs' method='POST'  onsubmit='onSubmit()'>"
       "<p style='margin: 40px;'><button name='hcs' value='5'>Portão ( Abrir / Fechar )</button></p>"
       "<p style='margin: 40px;'><button name='hcs' value='6'>Alarme ( Ligar / Desligar )</button></p>"
-      "</form></body></html>";
-      
-    server.printP(message);
+      "</form><br>"
+      "<p style='margin: 40px;'>ESTADO DO PORTÃO: <b>";
+    
+    server.printP(message1);
+    if (statusPortao == 0) {
+      P(message2) = "</b></p> " FECHADO "</body></html>";
+      server.printP(message2);
+    } else {
+      P(message2) = "</b></p> " ABERTO "</body></html>";
+      server.printP(message2);
+    }
+    
   }
 }
 
@@ -131,6 +174,8 @@ void setup()
   pinMode(ALARME_PIN, OUTPUT);
   //pinMode(ALARME_OFF_PIN, OUTPUT);
   
+  pinMode(PORTAO_PIN, INPUT);
+  
   digitalWrite(GARAGEM_PIN, HIGH); 
   digitalWrite(ALARME_PIN, HIGH); 
  // digitalWrite(ALARME_OFF_PIN, HIGH); 
@@ -143,7 +188,11 @@ void setup()
   webserver.setDefaultCommand(&buzzCmd); 
   /* start the server to wait for connections */
   webserver.begin();
+  
+  tempoStatusPortao = millis();
+  statusPortaoPin = digitalRead(PORTAO_PIN);
 }
+
 void loop()
 {
   // process incoming connections one at a time forever
@@ -188,6 +237,20 @@ void loop()
     control = 0;
     controlValue = 0;
   }
+  
+  if (statusPortaoPin != digitalRead(PORTAO_PIN)) {
+    contaStatusPortao = millis() - tempoStatusPortao;
+    tempoStatusPortao = millis();
+    if (contaStatusPortao > 200) {
+      incPortao = 0;
+    } else {
+      incPortao++;
+    }
+        
+    statusPortaoPin = digitalRead(PORTAO_PIN);
+  }
+  
+  
 }
 //350997527
 void controlePortao() {
@@ -219,8 +282,8 @@ void controleAlarme() {
 void timerIsr() {
   //Mostra as informações no Serial Monitor
   char *timeNow = rtc.getTimeStr();
-  Serial.print("Hora : ");
-  Serial.println(timeNow);
+  //Serial.print("Hora : ");
+  //Serial.println(timeNow);
   
   if (strcmp(timeNow, "22:00:00") == 0 || strcmp(timeNow, "05:30:00") == 0) {
       alarme = true;
@@ -230,6 +293,39 @@ void timerIsr() {
       //desalarme = true;
   }
   */
+  
+  /*
+  int statusPortaoPin = digitalRead(PORTAO_PIN);
+  
+  if (statusPortaoPin == 0 && contaStatusPortao < 4) {
+    contaStatusPortao++;
+  } 
+  
+  if (statusPortaoPin == 1 && contaStatusPortao != 4 ) {
+    portaoAberto = 1;
+    Serial.println("ABERTO");
+  } else {
+     portaoAberto = 0;
+    Serial.println("FECHADO");
+  } 
+  
+  if (contaStatusPortao >= 4) {
+    contaStatusPortao = 0;
+  }
+  */
+  
+  
+  if (contaSec >= 3) {
+    contaSec = 0;
+    if (incPortao < 100) {
+      statusPortao = 0;
+      Serial.println("FECHADO");
+    } else {
+      statusPortao = 1;
+      Serial.println("ABERTO");
+    }
+  }
+  contaSec++;
 }
 
 
