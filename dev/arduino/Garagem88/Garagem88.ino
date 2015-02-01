@@ -84,7 +84,7 @@ void buzzCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, 
 	 * variable */
         controlValue = strtoul(value, NULL, 10);
         control = 1;
-        Serial.println(controlValue);
+        //Serial.println(controlValue);
       }
     } while (repeat);
     
@@ -134,17 +134,20 @@ void buzzCmd(WebServer &server, WebServer::ConnectionType type, char *url_tail, 
       "<p style='margin: 40px;'><button name='hcs' value='5'>Portão ( Abrir / Fechar )</button></p>"
       "<p style='margin: 40px;'><button name='hcs' value='6'>Alarme ( Ligar / Desligar )</button></p>"
       "</form><br>"
-      "<p style='margin: 40px;'>ESTADO DO PORTÃO: <b>";
+      "</body></html>";
+      //"<p style='margin: 40px;'>ESTADO DO PORTÃO: <b>";
     
     server.printP(message1);
+    
+    /*
     if (statusPortao == 0) {
-      P(message2) = "</b></p> " FECHADO "</body></html>";
+      P(message2) = FECHADO "</b><br><br>obs: atualize o navegador para um resultado mais recente.</p></body></html>";
       server.printP(message2);
     } else {
-      P(message2) = "</b></p> " ABERTO "</body></html>";
+      P(message2) = ABERTO "</b><br><br>obs: atualize o navegador para um resultado mais recente.</p></body></html>";
       server.printP(message2);
     }
-    
+    */
   }
 }
 
@@ -160,9 +163,9 @@ void setup()
    
   //As linhas abaixo setam a data e hora do modulo
   //e podem ser comentada apos a primeira utilizacao
-  //rtc.setDOW(FRIDAY);      //Define o dia da semana
-  //rtc.setTime(1,30, 0);     //Define o horario
-  //rtc.setDate(23, 1, 2015);   //Define o dia, mes e ano
+  //rtc.setDOW(SUNDAY);      //Define o dia da semana
+  //rtc.setTime(11,0, 0);     //Define o horario
+  //rtc.setDate(1, 2, 2015);   //Define o dia, mes e ano
    
   //Definicoes do pino SQW/Out
   rtc.setSQWRate(SQW_RATE_1);
@@ -216,17 +219,17 @@ void loop()
   */
   
   if (control == 1) {
-    Serial.print("control: ");
-    Serial.println(control);
+    //Serial.print("control: ");
+    //Serial.println(control);
     if (controlValue == GARAGEM_PIN) {
       
         controlePortao();
-        Serial.println("GARAGEM_PIN");
+        //Serial.println("GARAGEM_PIN");
         
     } else if (controlValue == ALARME_PIN) {
       
         controleAlarme();
-        Serial.println("ALARME_PIN");
+        //Serial.println("ALARME_PIN");
         
     }/* else if (controlValue == ALARME_OFF_PIN) {
       
@@ -241,6 +244,8 @@ void loop()
   if (statusPortaoPin != digitalRead(PORTAO_PIN)) {
     contaStatusPortao = millis() - tempoStatusPortao;
     tempoStatusPortao = millis();
+    //Serial.print("contaStatusPortao : ");
+    //Serial.println(contaStatusPortao);
     if (contaStatusPortao > 200) {
       incPortao = 0;
     } else {
@@ -254,8 +259,8 @@ void loop()
 }
 //350997527
 void controlePortao() {
-  Serial.print("GARAGEM_PIN: ");
-  Serial.println(GARAGEM_PIN);
+  //Serial.print("GARAGEM_PIN: ");
+  //Serial.println(GARAGEM_PIN);
   
   digitalWrite(GARAGEM_PIN, HIGH); 
   digitalWrite(ALARME_PIN, HIGH); 
@@ -267,8 +272,8 @@ void controlePortao() {
 }
 
 void controleAlarme() {
-  Serial.print("ALARME_PIN: ");
-  Serial.println(ALARME_PIN);
+  //Serial.print("ALARME_PIN: ");
+  //Serial.println(ALARME_PIN);
   
   digitalWrite(GARAGEM_PIN, HIGH); 
   digitalWrite(ALARME_PIN, HIGH); 
@@ -282,8 +287,8 @@ void controleAlarme() {
 void timerIsr() {
   //Mostra as informações no Serial Monitor
   char *timeNow = rtc.getTimeStr();
-  //Serial.print("Hora : ");
-  //Serial.println(timeNow);
+  Serial.print("Hora : ");
+  Serial.println(timeNow);
   
   if (strcmp(timeNow, "22:00:00") == 0 || strcmp(timeNow, "05:30:00") == 0) {
       alarme = true;
